@@ -13,7 +13,7 @@ import Database.TorrentRecode;
 public class Main {
 
     private static final String HELP_MSG =
-        """
+    """
     Usage:
         java -jar TorrentBank.jar <command> [options]                       - 导入或导出 BT_backup 文件到数据库
     

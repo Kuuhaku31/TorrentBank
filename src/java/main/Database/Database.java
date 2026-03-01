@@ -57,6 +57,16 @@ public class Database implements Closeable {
     }
 
     public Database(String dbPath) throws Exception {
+
+        // 确保路径存在
+        var dbFile = new File(dbPath);
+        var parentDir = dbFile.getParentFile();
+        if(parentDir != null && !parentDir.exists()) {
+            if(!parentDir.mkdirs()) {
+                throw new IOException("无法创建数据库目录: " + parentDir.getAbsolutePath());
+            }
+        }
+
         ensureSqliteDriverLoaded();
         // 确保数据库文件存在
         var dbUrl = "jdbc:sqlite:" + dbPath;
