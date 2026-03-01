@@ -13,7 +13,7 @@ import Database.TorrentRecode;
 public class Main {
 
     private static final String HELP_MSG =
-    """
+        """
     Usage:
         java -jar TorrentBank.jar <command> [options]                       - 导入或导出 BT_backup 文件到数据库
     
@@ -67,7 +67,7 @@ public class Main {
                 }
                 var qbtCategory = args[1];
                 var exportDir   = args[2];
-                var dbPath     = "torrent_bank.db"; // 默认数据库路径
+                var dbPath      = "torrent_bank.db"; // 默认数据库路径
                 // 解析可选参数
                 for(int i = 3; i < args.length - 1; i++) {
                     if("--db".equals(args[i])) {

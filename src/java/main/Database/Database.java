@@ -14,11 +14,11 @@ import java.util.List;
 
 public class Database implements Closeable {
 
-    private final Connection conn; // SQLite 数据库连接
+    private final Connection conn;                     // SQLite 数据库连接
     private static final int DEFAULT_BATCH_SIZE = 500; // 默认批处理大小
 
-    private static final String UPSERT_TORRENT_SQL = 
-    """
+    private static final String UPSERT_TORRENT_SQL =
+        """
     INSERT INTO torrent (TOR_HASH, file_name, file_size, torrent_file)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(TOR_HASH) DO UPDATE SET
@@ -27,8 +27,8 @@ public class Database implements Closeable {
         torrent_file = excluded.torrent_file;
     """;
 
-    private static final String UPSERT_FAST_RESUME_SQL = 
-    """
+    private static final String UPSERT_FAST_RESUME_SQL =
+        """
     INSERT INTO torrent (TOR_HASH, qbt_category, fastresume)
     VALUES (?, ?, ?)
     ON CONFLICT(TOR_HASH) DO UPDATE SET
@@ -36,11 +36,11 @@ public class Database implements Closeable {
         fastresume = excluded.fastresume;
     """;
 
-    private static final String SELECT_BY_CATEGORY_SQL = 
-    """
+    private static final String SELECT_BY_CATEGORY_SQL =
+        """
     SELECT TOR_HASH, torrent_file, fastresume
     FROM torrent
-    WHERE qbt_category = ?;
+    WHERE qbt_category LIKE ?;
     """;
 
 
@@ -51,7 +51,7 @@ public class Database implements Closeable {
     private static void ensureSqliteDriverLoaded() {
         try {
             Class.forName("org.sqlite.JDBC");
-        } catch (ClassNotFoundException e) {
+        } catch(ClassNotFoundException e) {
             throw new IllegalStateException("未找到 SQLite JDBC 驱动，请确认已添加相关依赖", e);
         }
     }
@@ -59,7 +59,7 @@ public class Database implements Closeable {
     public Database(String dbPath) throws Exception {
 
         // 确保路径存在
-        var dbFile = new File(dbPath);
+        var dbFile    = new File(dbPath);
         var parentDir = dbFile.getParentFile();
         if(parentDir != null && !parentDir.exists()) {
             if(!parentDir.mkdirs()) {
@@ -94,11 +94,11 @@ public class Database implements Closeable {
 
         // 根据不同类型使用不同SQL语句
         int torrentCount = 0, fastResumeCount = 0;
-        for (var record : records) {
+        for(var record : records) {
 
             // torrent记录
             if(record instanceof TorrentRecode) {
-                var torrentRecord = (TorrentRecode) record;
+                var torrentRecord = (TorrentRecode)record;
                 safeSetString(psUpsertTorrent, 1, torrentRecord.TOR_HASH);
                 safeSetString(psUpsertTorrent, 2, torrentRecord.file_name);
                 safeSetLong(psUpsertTorrent, 3, torrentRecord.file_size);
@@ -108,10 +108,10 @@ public class Database implements Closeable {
 
                 if(torrentCount % DEFAULT_BATCH_SIZE == 0) psUpsertTorrent.executeBatch();
             }
-            
+
             // fastresume记录
             else if(record instanceof FastResumeRecode) {
-                var fastResumeRecord = (FastResumeRecode) record;
+                var fastResumeRecord = (FastResumeRecode)record;
                 safeSetString(psUpsertFastResume, 1, fastResumeRecord.TOR_HASH);
                 safeSetString(psUpsertFastResume, 2, fastResumeRecord.category);
                 safeSetBytes(psUpsertFastResume, 3, fastResumeRecord.fastResumeFileContent);
@@ -137,16 +137,16 @@ public class Database implements Closeable {
 
     // 导出文件到指定位置
     public void exportByCategory(String qbtCategory, Path exportPath) throws SQLException, IOException {
-        psSelectByCategory.setString(1, qbtCategory);
-        try (var rs = psSelectByCategory.executeQuery()) {
-            while (rs.next()) {
+        psSelectByCategory.setString(1, qbtCategory + "%"); // 使用LIKE语法匹配分类前缀
+        try(var rs = psSelectByCategory.executeQuery()) {
+            while(rs.next()) {
                 var torrentFileContent = rs.getBytes("torrent_file");
-                var fastResumeContent = rs.getBytes("fastresume");
+                var fastResumeContent  = rs.getBytes("fastresume");
 
                 // 这里可以根据需要将torrentFileContent和fastResumeContent写入文件系统
                 // 例如，可以将它们保存到exportPath目录下，文件名可以根据TOR_HASH或其他信息生成
-                var torHash = rs.getString("TOR_HASH");
-                var torrentFile = exportPath.resolve(torHash + ".torrent");
+                var torHash        = rs.getString("TOR_HASH");
+                var torrentFile    = exportPath.resolve(torHash + ".torrent");
                 var fastResumeFile = exportPath.resolve(torHash + ".fastresume");
 
                 Files.write(torrentFile, torrentFileContent);
@@ -159,18 +159,17 @@ public class Database implements Closeable {
     public void close() {
         try {
             conn.close();
-        } catch (Exception e) {
+        } catch(Exception e) {
             e.printStackTrace();
         }
     }
 
     private void initDatabase(String dbUrl) throws Exception {
-        try (
-            var conn = DriverManager.getConnection(dbUrl);  
-            var stmt = conn.createStatement()
-        ) {
-            String sql = 
-            """
+        try(
+            var conn = DriverManager.getConnection(dbUrl);
+            var stmt = conn.createStatement()) {
+            String sql =
+                """
             CREATE TABLE "torrent" (
 
                 "TOR_HASH"     text NOT NULL,
@@ -184,13 +183,14 @@ public class Database implements Closeable {
 
                 PRIMARY KEY ("TOR_HASH" DESC)
             );
-            """;;
+            """;
+            ;
             stmt.execute(sql);
         }
     }
 
     private static void safeSetString(PreparedStatement ps, int index, String value) throws SQLException {
-        if (value == null) {
+        if(value == null) {
             ps.setNull(index, java.sql.Types.VARCHAR);
         } else {
             ps.setString(index, value);
@@ -198,7 +198,7 @@ public class Database implements Closeable {
     }
 
     private static void safeSetLong(PreparedStatement ps, int index, Long value) throws SQLException {
-        if (value == null) {
+        if(value == null) {
             ps.setNull(index, java.sql.Types.BIGINT);
         } else {
             ps.setLong(index, value);
@@ -206,7 +206,7 @@ public class Database implements Closeable {
     }
 
     private static void safeSetBytes(PreparedStatement ps, int index, byte[] value) throws SQLException {
-        if (value == null) {
+        if(value == null) {
             ps.setNull(index, java.sql.Types.BLOB);
         } else {
             ps.setBytes(index, value);
