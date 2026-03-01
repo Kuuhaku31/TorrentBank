@@ -2,6 +2,9 @@ package Database;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -33,14 +36,23 @@ public class Database implements Closeable {
         fastresume = excluded.fastresume;
     """;
 
+    private static final String SELECT_BY_CATEGORY_SQL = 
+    """
+    SELECT TOR_HASH, torrent_file, fastresume
+    FROM torrent
+    WHERE qbt_category = ?;
+    """;
+
+
     private final PreparedStatement psUpsertTorrent;
     private final PreparedStatement psUpsertFastResume;
+    private final PreparedStatement psSelectByCategory;
 
     private static void ensureSqliteDriverLoaded() {
         try {
             Class.forName("org.sqlite.JDBC");
         } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("未找到 SQLite JDBC 驱动，请确认已添加 org.xerial:sqlite-jdbc 依赖", e);
+            throw new IllegalStateException("未找到 SQLite JDBC 驱动，请确认已添加相关依赖", e);
         }
     }
 
@@ -58,6 +70,7 @@ public class Database implements Closeable {
         // 预编译 SQL 语句
         psUpsertTorrent    = conn.prepareStatement(UPSERT_TORRENT_SQL);
         psUpsertFastResume = conn.prepareStatement(UPSERT_FAST_RESUME_SQL);
+        psSelectByCategory = conn.prepareStatement(SELECT_BY_CATEGORY_SQL);
     }
 
     public void upsert(List<DatabaseRecode> records) throws SQLException {
@@ -110,6 +123,26 @@ public class Database implements Closeable {
         // 提交事务并恢复之前的自动提交状态
         conn.commit();
         conn.setAutoCommit(prevAuto);
+    }
+
+    // 导出文件到指定位置
+    public void exportByCategory(String qbtCategory, Path exportPath) throws SQLException, IOException {
+        psSelectByCategory.setString(1, qbtCategory);
+        try (var rs = psSelectByCategory.executeQuery()) {
+            while (rs.next()) {
+                var torrentFileContent = rs.getBytes("torrent_file");
+                var fastResumeContent = rs.getBytes("fastresume");
+
+                // 这里可以根据需要将torrentFileContent和fastResumeContent写入文件系统
+                // 例如，可以将它们保存到exportPath目录下，文件名可以根据TOR_HASH或其他信息生成
+                var torHash = rs.getString("TOR_HASH");
+                var torrentFile = exportPath.resolve(torHash + ".torrent");
+                var fastResumeFile = exportPath.resolve(torHash + ".fastresume");
+
+                Files.write(torrentFile, torrentFileContent);
+                Files.write(fastResumeFile, fastResumeContent);
+            }
+        }
     }
 
     @Override

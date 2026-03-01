@@ -2,6 +2,15 @@
   "configurations": [
     {
         "type": "java",
+        "name": "Main.Main",
+        "request": "launch",
+        "mainClass": "Main.Main",
+        "projectName": "TorrentBank",
+        "args": "export e/2026-02-27 ./ignore/bk_files/ --db ./ignore/test.db",
+        "vmArgs": "--enable-native-access=ALL-UNNAMED"
+    },
+    {
+        "type": "java",
         "name": "TestMain",
         "request": "launch",
         "mainClass": "Main.TestMain",
