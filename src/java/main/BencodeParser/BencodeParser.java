@@ -72,6 +72,48 @@ public class BencodeParser {
     return null;
   }
 
+  // 提取大小
+  public Long getFileSizeFromTorrent() {
+    try {
+      Object info = root.get("info");
+      if (info instanceof Map) {
+        Map<?, ?> infoMap = (Map<?, ?>) info;
+
+        // 单文件模式
+        if (infoMap.containsKey("length")) {
+          Object lengthObj = infoMap.get("length");
+          if (lengthObj instanceof Long) {
+            return (Long) lengthObj;
+          }
+        }
+
+        // 多文件模式
+        if (infoMap.containsKey("files") && infoMap.get("files") instanceof List) {
+          @SuppressWarnings("unchecked")
+          List<Object> files = (List<Object>) infoMap.get("files");
+          long totalSize = 0L;
+          for (Object fileObj : files) {
+            if (fileObj instanceof Map) {
+              Map<?, ?> fileMap = (Map<?, ?>) fileObj;
+              Object lengthObj = fileMap.get("length");
+              if (lengthObj instanceof Long) {
+                totalSize += (Long) lengthObj;
+              } else {
+                return null; // 如果有文件缺少 length 字段，则无法确定总大小
+              }
+            } else {
+              return null; // 无效的 files 列表项
+            }
+          }
+          return totalSize;
+        }
+      }
+    } catch (Exception ignored) {
+    }
+
+    return null;
+  }
+
   // 尝试提取 qBt-category
   public String getCategoryFromFastResume() {
     try {

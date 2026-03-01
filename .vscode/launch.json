@@ -1,10 +1,25 @@
 {
   "configurations": [
     {
-      "type": "java",
-      "name": "TestBencodeParser",
-      "request": "launch",
-      "mainClass": "BencodeParser.TestBencodeParser",
+        "type": "java",
+        "name": "TestMain",
+        "request": "launch",
+        "mainClass": "Main.TestMain",
+        "projectName": "TorrentBank",
+        "vmArgs": "--enable-native-access=ALL-UNNAMED"
+    },
+    {
+        "type": "java",
+        "name": "TestMain",
+        "request": "launch",
+        "mainClass": "Main.TestMain",
+        "projectName": "TorrentBank_7ad8dd41"
+    },
+    {
+        "type": "java",
+        "name": "TestBencodeParser",
+        "request": "launch",
+        "mainClass": "BencodeParser.TestBencodeParser"
     }
-  ]
+]
 }

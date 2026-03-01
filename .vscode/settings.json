@@ -1,4 +1,8 @@
 {
   "java.project.sourcePaths": ["src/java/main", "src/java/test"],
-  "cSpell.words": ["Bencode", "fastresume"]
+  "cSpell.words": [
+    "Bencode",
+    "fastresume",
+    "pstmt"
+]
 }

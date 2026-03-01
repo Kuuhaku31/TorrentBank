@@ -1,2 +1,6 @@
 /ignore/
 /log/
+
+.clang-format
+
+target/

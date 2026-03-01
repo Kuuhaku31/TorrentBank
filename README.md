@@ -27,6 +27,20 @@ String getFileNameFromTorrent()
 String getCategoryFromFastResume()
 ```
 
+### DataBase 类
+
+基于 SQLite 数据库的简单封装类。
+
+```java
+// 构造函数，接受数据库文件路径作为输入
+// 如果数据库文件不存在，会自动创建
+// 检查表结构，如果结构不正确，抛出异常
+DataBase(String dbFilePath) throws SQLException
+
+// 关闭数据库
+void close()
+```
+
 ## 数据库结构
 
 `torrent` 表
@@ -34,11 +48,13 @@ String getCategoryFromFastResume()
 | 键名           | 数据类型 | 解释             | 备注       |
 | -------------- | -------- | ---------------- | ---------- |
 | `TOR_HASH`     | text     | 种子 info_hash   | 主键       |
+| -------------- | -------- | ---------------- | ---------- |
 | `file_name`    | text     | 文件名称         |            |
 | `file_size`    | integer  | 文件大小         | （字节）   |
-| `torrent_file` | blob     | 种子文件         | 二进制数据 |
 | `qbt_category` | text     | qBittorrent 分类 |            |
-| `remark`       | text     | 备注             | 手动维护   |
+| -------------- | -------- | ---------------- | ---------- |
+| `torrent_file` | blob     | 种子文件         | 二进制数据 |
+| `fastresume`   | blob     | .fastresume 文件 | 二进制数据 |
 
 ```sql
 CREATE TABLE "torrent" (
@@ -47,10 +63,10 @@ CREATE TABLE "torrent" (
 
     "file_name"    text,
     "file_size"    integer,
-    "torrent_file" blob,
     "qbt_category" text,
 
-    "remark"       text,
+    "torrent_file" blob,
+    "fastresume"   blob,
 
     PRIMARY KEY ("TOR_HASH" DESC)
 );
