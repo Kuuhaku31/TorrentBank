@@ -1,0 +1,10 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "TestBencodeParser",
+      "request": "launch",
+      "mainClass": "BencodeParser.TestBencodeParser",
+    }
+  ]
+}
