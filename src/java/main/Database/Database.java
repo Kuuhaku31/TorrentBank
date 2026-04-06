@@ -8,14 +8,28 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 
 public class Database implements Closeable {
 
     private final Connection conn;                     // SQLite 数据库连接
     private static final int DEFAULT_BATCH_SIZE = 500; // 默认批处理大小
+
+    private static final Map<String, String> REQUIRED_COLUMNS = Map.ofEntries(
+        Map.entry("TOR_HASH", "text"),
+        Map.entry("file_name", "text"),
+        Map.entry("file_size", "integer"),
+        Map.entry("qbt_category", "text"),
+        Map.entry("save_path", "text"),
+        Map.entry("torrent_file", "blob"),
+        Map.entry("fastresume", "blob")
+    );
 
     private static final String UPSERT_TORRENT_SQL =
         """
@@ -29,10 +43,11 @@ public class Database implements Closeable {
 
     private static final String UPSERT_FAST_RESUME_SQL =
         """
-    INSERT INTO torrent (TOR_HASH, qbt_category, fastresume)
-    VALUES (?, ?, ?)
+    INSERT INTO torrent (TOR_HASH, qbt_category, save_path, fastresume)
+    VALUES (?, ?, ?, ?)
     ON CONFLICT(TOR_HASH) DO UPDATE SET
         qbt_category = excluded.qbt_category,
+        save_path = excluded.save_path,
         fastresume = excluded.fastresume;
     """;
 
@@ -76,6 +91,7 @@ public class Database implements Closeable {
             initDatabase(dbUrl); // 如果表不存在则创建表
         }
         conn = DriverManager.getConnection(dbUrl); // 连接 SQLite 数据库
+        validateTableSchema(conn);
 
         // 预编译 SQL 语句
         psUpsertTorrent    = conn.prepareStatement(UPSERT_TORRENT_SQL);
@@ -92,52 +108,59 @@ public class Database implements Closeable {
         var prevAuto = conn.getAutoCommit(); // 保存之前的自动提交状态
         conn.setAutoCommit(false);           // 关闭自动提交
 
-        // 根据不同类型使用不同SQL语句
-        int torrentCount = 0, fastResumeCount = 0;
-        for(var record : records) {
+        try {
+            // 根据不同类型使用不同SQL语句
+            int torrentCount = 0, fastResumeCount = 0;
+            for(var record : records) {
 
-            // torrent记录
-            if(record instanceof TorrentRecode) {
-                var torrentRecord = (TorrentRecode)record;
-                safeSetString(psUpsertTorrent, 1, torrentRecord.TOR_HASH);
-                safeSetString(psUpsertTorrent, 2, torrentRecord.file_name);
-                safeSetLong(psUpsertTorrent, 3, torrentRecord.file_size);
-                safeSetBytes(psUpsertTorrent, 4, torrentRecord.torrentFileContent);
-                psUpsertTorrent.addBatch();
-                torrentCount++;
+                // torrent记录
+                if(record instanceof TorrentRecode) {
+                    var torrentRecord = (TorrentRecode)record;
+                    safeSetString(psUpsertTorrent, 1, torrentRecord.TOR_HASH);
+                    safeSetString(psUpsertTorrent, 2, torrentRecord.file_name);
+                    safeSetLong(psUpsertTorrent, 3, torrentRecord.file_size);
+                    safeSetBytes(psUpsertTorrent, 4, torrentRecord.torrentFileContent);
+                    psUpsertTorrent.addBatch();
+                    torrentCount++;
 
-                if(torrentCount % DEFAULT_BATCH_SIZE == 0) psUpsertTorrent.executeBatch();
+                    if(torrentCount % DEFAULT_BATCH_SIZE == 0) psUpsertTorrent.executeBatch();
+                }
+
+                // fastresume记录
+                else if(record instanceof FastResumeRecode) {
+                    var fastResumeRecord = (FastResumeRecode)record;
+                    safeSetString(psUpsertFastResume, 1, fastResumeRecord.TOR_HASH);
+                    safeSetString(psUpsertFastResume, 2, fastResumeRecord.category);
+                    safeSetString(psUpsertFastResume, 3, fastResumeRecord.save_path);
+                    safeSetBytes(psUpsertFastResume, 4, fastResumeRecord.fastResumeFileContent);
+                    psUpsertFastResume.addBatch();
+                    fastResumeCount++;
+
+                    if(fastResumeCount % DEFAULT_BATCH_SIZE == 0) psUpsertFastResume.executeBatch();
+                }
+
+                else {
+                    throw new IllegalArgumentException("Unsupported record type: " + record.getClass().getName());
+                }
             }
 
-            // fastresume记录
-            else if(record instanceof FastResumeRecode) {
-                var fastResumeRecord = (FastResumeRecode)record;
-                safeSetString(psUpsertFastResume, 1, fastResumeRecord.TOR_HASH);
-                safeSetString(psUpsertFastResume, 2, fastResumeRecord.category);
-                safeSetBytes(psUpsertFastResume, 3, fastResumeRecord.fastResumeFileContent);
-                psUpsertFastResume.addBatch();
-                fastResumeCount++;
+            // 执行批处理操作
+            if(torrentCount > 0) psUpsertTorrent.executeBatch();
+            if(fastResumeCount > 0) psUpsertFastResume.executeBatch();
 
-                if(fastResumeCount % DEFAULT_BATCH_SIZE == 0) psUpsertFastResume.executeBatch();
-            }
-
-            else {
-                throw new IllegalArgumentException("Unsupported record type: " + record.getClass().getName());
-            }
+            // 提交事务
+            conn.commit();
+        } catch(SQLException | RuntimeException e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            conn.setAutoCommit(prevAuto);
         }
-
-        // 执行批处理操作
-        if(torrentCount > 0) psUpsertTorrent.executeBatch();
-        if(fastResumeCount > 0) psUpsertFastResume.executeBatch();
-
-        // 提交事务并恢复之前的自动提交状态
-        conn.commit();
-        conn.setAutoCommit(prevAuto);
     }
 
     // 导出文件到指定位置
     public void exportByCategory(String qbtCategory, Path exportPath) throws SQLException, IOException {
-        psSelectByCategory.setString(1, qbtCategory + "%"); // 使用LIKE语法匹配分类前缀
+        psSelectByCategory.setString(1, qbtCategory);
         try(var rs = psSelectByCategory.executeQuery()) {
             while(rs.next()) {
                 var torrentFileContent = rs.getBytes("torrent_file");
@@ -149,8 +172,12 @@ public class Database implements Closeable {
                 var torrentFile    = exportPath.resolve(torHash + ".torrent");
                 var fastResumeFile = exportPath.resolve(torHash + ".fastresume");
 
-                Files.write(torrentFile, torrentFileContent);
-                Files.write(fastResumeFile, fastResumeContent);
+                if(torrentFileContent != null) {
+                    Files.write(torrentFile, torrentFileContent);
+                }
+                if(fastResumeContent != null) {
+                    Files.write(fastResumeFile, fastResumeContent);
+                }
             }
         }
     }
@@ -177,6 +204,7 @@ public class Database implements Closeable {
                 "file_name"    text,
                 "file_size"    integer,
                 "qbt_category" text,
+                "save_path"    text,
 
                 "torrent_file" blob,
                 "fastresume"   blob,
@@ -186,6 +214,40 @@ public class Database implements Closeable {
             """;
             ;
             stmt.execute(sql);
+        }
+    }
+
+    private static void validateTableSchema(Connection conn) throws SQLException {
+        Map<String, String> existingColumns = new LinkedHashMap<>();
+
+        try(
+            var stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery("PRAGMA table_info('torrent');")) {
+            while(rs.next()) {
+                String name = rs.getString("name");
+                String type = rs.getString("type");
+                if(name != null && type != null) {
+                    existingColumns.put(name, type.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+
+        if(existingColumns.isEmpty()) {
+            throw new SQLException("数据库表结构错误: 缺少 torrent 表");
+        }
+
+        for(var required : REQUIRED_COLUMNS.entrySet()) {
+            String actualType = existingColumns.get(required.getKey());
+            if(actualType == null) {
+                throw new SQLException("数据库表结构错误: 缺少字段 " + required.getKey());
+            }
+            if(!actualType.equals(required.getValue())) {
+                throw new SQLException(
+                    "数据库表结构错误: 字段 " + required.getKey()
+                        + " 类型应为 " + required.getValue()
+                        + "，实际为 " + actualType
+                );
+            }
         }
     }
 

@@ -8,11 +8,25 @@ public class TorrentRecode extends DatabaseRecode{
     final Long   file_size;
     final byte[] torrentFileContent;
 
-    public TorrentRecode(byte[] torrentFileContent) {
+    private record ParsedTorrent(String hash, String fileName, Long fileSize) {}
+
+    private static ParsedTorrent parse(byte[] torrentFileContent) {
         var torrentParser = new BencodeParser(torrentFileContent);
-        super(torrentParser.getHashFromTorrent());
-        this.file_name = torrentParser.getFileNameFromTorrent();
-        this.file_size = torrentParser.getFileSizeFromTorrent();
+        return new ParsedTorrent(
+            torrentParser.getHashFromTorrent(),
+            torrentParser.getFileNameFromTorrent(),
+            torrentParser.getFileSizeFromTorrent()
+        );
+    }
+
+    public TorrentRecode(byte[] torrentFileContent) {
+        this(parse(torrentFileContent), torrentFileContent);
+    }
+
+    private TorrentRecode(ParsedTorrent parsed, byte[] torrentFileContent) {
+        super(parsed.hash());
+        this.file_name = parsed.fileName();
+        this.file_size = parsed.fileSize();
         this.torrentFileContent = torrentFileContent;
 
         if(this.file_name == null || this.file_size == null || this.torrentFileContent == null) {

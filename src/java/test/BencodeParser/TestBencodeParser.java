@@ -20,6 +20,8 @@ public class TestBencodeParser {
             System.out.println("Extracted File Name: " + fileName);
             System.out.println("Extracted Category: " + category);
             System.out.println("Extracted Save Path: " + savePath);
+
+            System.out.println("Full Parsed Data: " + parser);
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -55,6 +55,7 @@ void close()
 | `file_name`    | text     | 文件名称         |            |
 | `file_size`    | integer  | 文件大小         | （字节）   |
 | `qbt_category` | text     | qBittorrent 分类 |            |
+| `save_path`    | text     | 保存路径         |            |
 | -------------- | -------- | ---------------- | ---------- |
 | `torrent_file` | blob     | 种子文件         | 二进制数据 |
 | `fastresume`   | blob     | .fastresume 文件 | 二进制数据 |
@@ -62,16 +63,17 @@ void close()
 ```sql
 CREATE TABLE "torrent" (
 
-    "TOR_HASH"     text NOT NULL,
+  "TOR_HASH"     text NOT NULL,
 
-    "file_name"    text,
-    "file_size"    integer,
-    "qbt_category" text,
+  "file_name"    text,
+  "file_size"    integer,
+  "qbt_category" text,
+  "save_path"    text,
 
-    "torrent_file" blob,
-    "fastresume"   blob,
+  "torrent_file" blob,
+  "fastresume"   blob,
 
-    PRIMARY KEY ("TOR_HASH" DESC)
+  PRIMARY KEY ("TOR_HASH" DESC)
 );
 ```
 
@@ -79,11 +81,11 @@ CREATE TABLE "torrent" (
 
 """txt
 Usage:
-java -jar TorrentBank.jar <command> [options] - 导入或导出 BT_backup 文件到数据库
+<command> [options] - 导入或导出 BT_backup 文件到数据库
 
 command:
-import <BT_backup Dir> [--db <Database Path>] -导入指定目录下的 BT_backup 文件到数据库，默认数据库路径为当前目录下的 torrent_bank.db
-export <qBittorrent Category> <Export Dir> [--db <Database Path>] - 导出指定 qBittorrent 分类的 torrent 和 fastresume 文件到指定目录，默认数据库路径为当前目录下的 torrent_bank.db
+import <BT_backup_Dir> [--db <Database_Path>]                     - 导入指定目录下的 BT_backup 文件到数据库，默认数据库路径为当前目录下的 torrent_bank.db
+export <qBittorrent_Category> <Export_Dir> [--db <Database_Path>] - 导出指定 qBittorrent 分类的 torrent 和 fastresume 文件到指定目录，默认数据库路径为当前目录下的 torrent_bank.db
 """
 
 ### 使用例

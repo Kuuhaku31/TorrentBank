@@ -3,10 +3,6 @@ package BencodeParser;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 public class BencodeParser {
 
@@ -138,6 +134,86 @@ public class BencodeParser {
         }
 
         return null;
+    }
+
+    /* ================= 重写方法 ================= */
+
+    @Override
+    public String toString() {
+        if(root == null) return "null";
+
+        // 递归输出
+        return formatValue(root, 0);
+    }
+
+    private String formatValue(Object value, int depth) {
+        if(value == null) {
+            return "null";
+        }
+
+        if(value instanceof Map<?, ?>) {
+            return formatMap((Map<?, ?>) value, depth);
+        }
+
+        if(value instanceof List<?>) {
+            return formatList((List<?>) value, depth);
+        }
+
+        if(value instanceof byte[]) {
+            return '"' + new String((byte[])value, StandardCharsets.UTF_8) + '"';
+        }
+
+        return String.valueOf(value);
+    }
+
+    private String formatMap(Map<?, ?> map, int depth) {
+        if(map.isEmpty()) {
+            return "{}";
+        }
+
+        String indent        = "  ".repeat(depth);
+        String childIndent   = "  ".repeat(depth + 1);
+        StringBuilder sb     = new StringBuilder();
+        Iterator<?> iterator = map.entrySet().iterator();
+
+        sb.append("{\n");
+        while(iterator.hasNext()) {
+            Map.Entry<?, ?> entry = (Map.Entry<?, ?>)iterator.next();
+            sb.append(childIndent)
+              .append(String.valueOf(entry.getKey()))
+              .append(": ")
+              .append(formatValue(entry.getValue(), depth + 1));
+
+            if(iterator.hasNext()) {
+                sb.append(',');
+            }
+            sb.append('\n');
+        }
+        sb.append(indent).append('}');
+
+        return sb.toString();
+    }
+
+    private String formatList(List<?> list, int depth) {
+        if(list.isEmpty()) {
+            return "[]";
+        }
+
+        String indent      = "  ".repeat(depth);
+        String childIndent = "  ".repeat(depth + 1);
+        StringBuilder sb   = new StringBuilder();
+
+        sb.append("[\n");
+        for(int i = 0; i < list.size(); i++) {
+            sb.append(childIndent).append(formatValue(list.get(i), depth + 1));
+            if(i < list.size() - 1) {
+                sb.append(',');
+            }
+            sb.append('\n');
+        }
+        sb.append(indent).append(']');
+
+        return sb.toString();
     }
 
     /* ================= Bencode 解析 ================= */
