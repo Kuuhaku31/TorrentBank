@@ -13,13 +13,16 @@ import Database.TorrentRecode;
 public class Main {
 
     private static final String HELP_MSG =
-        """
+    """
     Usage:
-        java -jar TorrentBank.jar <command> [options]                       - 导入或导出 BT_backup 文件到数据库
+        <command> [options]                                    - 导入或导出 BT_backup 文件到数据库
     
     command:
-        import <BT_backup Dir> [--db <Database Path>]                        -导入指定目录下的 BT_backup 文件到数据库，默认数据库路径为当前目录下的 torrent_bank.db
-        export <qBittorrent Category> <Export Dir> [--db <Database Path>]   - 导出指定 qBittorrent 分类的 torrent 和 fastresume 文件到指定目录，默认数据库路径为当前目录下的 torrent_bank.db
+        import <BT_backup Dir>                     [options]   - 导入指定目录下的 BT_backup 文件到数据库
+        export <qBittorrent Category> <Export Dir> [options]   - 导出指定 qBittorrent 分类的 torrent 和 fastresume 文件到指定目录
+    
+    options:
+        --db <Database Path>                                   - 指定数据库文件路径，默认为当前目录下的 torrent_bank.db
     """;
 
     public static void main(String[] args) {
