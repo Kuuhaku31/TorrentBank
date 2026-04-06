@@ -5,19 +5,21 @@ public class TestBencodeParser {
 
         System.out.println("Hello, BencodeParser!");
 
-        var filePtah = "./ignore/2d0ce0549d27666e1078a86653367675224f02c2.fastresume";
-        // var filePtah2 = "./ignore/2d0ce0549d27666e1078a86653367675224f02c2.torrent";
+        // var filePtah = "./ignore/2d0ce0549d27666e1078a86653367675224f02c2.fastresume";
+        var filePtah2 = "./ignore/2d0ce0549d27666e1078a86653367675224f02c2.torrent";
 
         try {
-            var fileContent = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(filePtah));
+            var fileContent = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(filePtah2));
             var parser = new BencodeParser(fileContent);
             String hash = parser.getHashFromTorrent();
             String fileName = parser.getFileNameFromTorrent();
             String category = parser.getCategoryFromFastResume();
+            String savePath = parser.getSavePathFromFastResume();
 
             System.out.println("Extracted Hash: " + hash);
             System.out.println("Extracted File Name: " + fileName);
             System.out.println("Extracted Category: " + category);
+            System.out.println("Extracted Save Path: " + savePath);
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -25,6 +25,9 @@ String getFileNameFromTorrent()
 
 // 尝试提取出 qBt-category 字段内容，失败返回 null
 String getCategoryFromFastResume()
+
+// 尝试提取出 save_path 字段内容，失败返回 null
+String getSavePathFromFastResume()
 ```
 
 ### DataBase 类
